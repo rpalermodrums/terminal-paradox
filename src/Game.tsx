@@ -499,37 +499,39 @@ const Game: React.FC = () => {
           marginTop: 0
         }}
       >
-        {/* Scroll indicators */}
-        {canScrollUp && (
-          <box position="absolute" top={0} right={1}>
-            <text fg="yellow" bold>↑ (Ctrl+U)</text>
-          </box>
-        )}
-        
         <box padding={1} height={OUTPUT_DISPLAY_HEIGHT - 2}>
+          {/* Scroll indicators inline with content */}
+          {canScrollUp && (
+            <text fg="yellow" bold>↑ More above (Ctrl+U)</text>
+          )}
+          
           {/* Show output or placeholder */}
           {visibleOutput.length === 0 ? (
             <text fg="gray">Type 'help' to see available commands</text>
           ) : (
-            visibleOutput.map((line, i) => (
-              <text key={i} fg={
-                line.startsWith('ERROR') || line.startsWith('FAILED') ? 'red' : 
-                line.startsWith('SUCCESS') ? 'green' :
-                line.startsWith('WARNING') ? 'yellow' :
-                line.startsWith('>') ? 'cyan' : 'white'
-              }>
-                {line.substring(0, terminalCols - 4)}
-              </text>
-            ))
+            visibleOutput.map((line, i) => {
+              // Account for space taken by scroll indicators
+              const skipLines = (canScrollUp ? 1 : 0) + (canScrollDown ? 1 : 0);
+              if (i >= maxOutputLines - skipLines) return null;
+              
+              return (
+                <text key={i} fg={
+                  line.startsWith('ERROR') || line.startsWith('FAILED') ? 'red' : 
+                  line.startsWith('SUCCESS') ? 'green' :
+                  line.startsWith('WARNING') ? 'yellow' :
+                  line.startsWith('>') ? 'cyan' : 'white'
+                }>
+                  {line.substring(0, terminalCols - 4)}
+                </text>
+              );
+            })
+          )}
+          
+          {/* Bottom indicator */}
+          {canScrollDown && (
+            <text fg="yellow" bold>↓ More below (Ctrl+D)</text>
           )}
         </box>
-        
-        {/* Bottom scroll indicator */}
-        {canScrollDown && (
-          <box position="absolute" bottom={0} right={1}>
-            <text fg="yellow" bold>↓ (Ctrl+D)</text>
-          </box>
-        )}
       </box>
 
       {/* Command Input - Fixed at bottom */}
