@@ -38,9 +38,9 @@ const Game: React.FC = () => {
   const remainingHeight = terminalRows - TITLE_HEIGHT - COMMAND_HEIGHT;
   
   // Split remaining height between game and output
-  // Give more space to game area, less to output
-  const GAME_AREA_HEIGHT = Math.floor(remainingHeight * 0.65); // 65% for game display
-  const OUTPUT_DISPLAY_HEIGHT = remainingHeight - GAME_AREA_HEIGHT; // 35% for command output
+  // More balanced split for better output visibility
+  const GAME_AREA_HEIGHT = Math.floor(remainingHeight * 0.5); // 50% for game display
+  const OUTPUT_DISPLAY_HEIGHT = remainingHeight - GAME_AREA_HEIGHT; // 50% for command output
   
   // Total should ALWAYS equal terminal height
   const TOTAL_HEIGHT = TITLE_HEIGHT + GAME_AREA_HEIGHT + OUTPUT_DISPLAY_HEIGHT + COMMAND_HEIGHT;
@@ -84,9 +84,15 @@ const Game: React.FC = () => {
     }
   }, [state.corruption]);
   
+  // Track when output changes to handle auto-scrolling
+  const [lastCommandIndex, setLastCommandIndex] = useState(0);
+  
   // Removed auto-scroll for now - always show latest
 
   const handleCommand = useCallback((input: string) => {
+    // Remember where this command starts in the output
+    const commandStartIndex = output.length;
+    
     // Apply command interception at high corruption
     const processedInput = state.corruption > 30 ? 
       corruptionEngine.interceptCommand(input) : input;
@@ -415,38 +421,50 @@ const Game: React.FC = () => {
       addOutput(`Puzzles Solved: ${puzzleManager.getProgress().solved}/${puzzleManager.getProgress().total}`);
       addOutput('=================================');
     }
-  }, [currentRoom, state, activePuzzle]);
+    
+    // Auto-scroll to show the command and its output
+    // Use setTimeout to ensure output has been updated
+    setTimeout(() => {
+      // Scroll to the command line position
+      setScrollOffset(commandStartIndex);
+    }, 0);
+  }, [currentRoom, state, activePuzzle, output.length]);
 
-  // Scrolling disabled temporarily for debugging
-  // useKeyboard((event: { name?: string; ctrl?: boolean; shift?: boolean }) => {
-  //   // Scrolling logic commented out
-  // });
+  // Enable scrolling with Ctrl+U (up) and Ctrl+D (down)
+  useKeyboard((event: { name?: string; ctrl?: boolean }) => {
+    if (!event.ctrl) return;
+    
+    if (event.name === 'u') {
+      // Scroll up
+      setScrollOffset(prev => Math.max(0, prev - 5));
+    } else if (event.name === 'd') {
+      // Scroll down
+      const maxScroll = Math.max(0, output.length - maxOutputLines);
+      setScrollOffset(prev => Math.min(maxScroll, prev + 5));
+    }
+  });
 
-  // Show only last N lines that fit in our output window (accounting for border and padding)
+  // Calculate how many lines we can actually display in output
   const maxOutputLines = Math.max(1, OUTPUT_DISPLAY_HEIGHT - 2); // -2 for border
-  const visibleOutput = output.length > 0 ? output.slice(-maxOutputLines) : [];
+  
+  // Handle scrolling - show different portion of output based on scroll offset
+  const visibleOutput = (() => {
+    if (output.length === 0) return [];
+    const start = Math.max(0, Math.min(scrollOffset, output.length - maxOutputLines));
+    const end = Math.min(output.length, start + maxOutputLines);
+    return output.slice(start, end);
+  })();
+  
+  const canScrollUp = scrollOffset > 0;
+  const canScrollDown = scrollOffset < output.length - maxOutputLines;
 
-  // Debug: log heights to console
-  useEffect(() => {
-    console.log('Terminal Layout:', {
-      terminal: { rows: terminalRows, cols: terminalCols },
-      heights: {
-        title: TITLE_HEIGHT,
-        game: GAME_AREA_HEIGHT,
-        output: OUTPUT_DISPLAY_HEIGHT,
-        command: COMMAND_HEIGHT,
-        total: TOTAL_HEIGHT,
-        shouldBe: terminalRows
-      }
-    });
-  }, [terminalRows, terminalCols]);
   
   return (
     <box display="flex" flexDirection="column" width={terminalCols} height={terminalRows}>
       {/* Game Title */}
       <box height={TITLE_HEIGHT} width={terminalCols}>
         <text bold fg="green">
-          TERMINAL PARADOX - {gameState.getFormattedTime()} | H:{terminalRows} T:{TOTAL_HEIGHT}
+          TERMINAL PARADOX - {gameState.getFormattedTime()}
         </text>
       </box>
 
@@ -481,15 +499,19 @@ const Game: React.FC = () => {
           marginTop: 0
         }}
       >
-        <box padding={1}>
-        {/* Show output or placeholder */}
-        {visibleOutput.length === 0 ? (
-          <text fg="gray">Type 'help' to see available commands</text>
-        ) : (
-          visibleOutput.map((line, i) => {
-            // Only show lines that fit in the container
-            if (i >= maxOutputLines) return null;
-            return (
+        {/* Scroll indicators */}
+        {canScrollUp && (
+          <box position="absolute" top={0} right={1}>
+            <text fg="yellow" bold>↑ (Ctrl+U)</text>
+          </box>
+        )}
+        
+        <box padding={1} height={OUTPUT_DISPLAY_HEIGHT - 2}>
+          {/* Show output or placeholder */}
+          {visibleOutput.length === 0 ? (
+            <text fg="gray">Type 'help' to see available commands</text>
+          ) : (
+            visibleOutput.map((line, i) => (
               <text key={i} fg={
                 line.startsWith('ERROR') || line.startsWith('FAILED') ? 'red' : 
                 line.startsWith('SUCCESS') ? 'green' :
@@ -498,10 +520,16 @@ const Game: React.FC = () => {
               }>
                 {line.substring(0, terminalCols - 4)}
               </text>
-            );
-          })
-        )}
+            ))
+          )}
         </box>
+        
+        {/* Bottom scroll indicator */}
+        {canScrollDown && (
+          <box position="absolute" bottom={0} right={1}>
+            <text fg="yellow" bold>↓ (Ctrl+D)</text>
+          </box>
+        )}
       </box>
 
       {/* Command Input - Fixed at bottom */}
