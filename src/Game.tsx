@@ -373,11 +373,25 @@ const Game: React.FC = () => {
         addOutput('  solve <answer>  - Solve active puzzle');
         addOutput('  hint            - Get puzzle hint (costs corruption)');
         addOutput('  combine X with Y - Combine items');
+        addOutput('  clear/cls       - Clear output history');
+        addOutput('');
+        addOutput('SHORTCUTS:');
+        addOutput('  Ctrl+U/D        - Scroll output up/down');
+        addOutput('  Cmd+K or Cmd+L  - Clear output');
         addOutput('');
         addOutput(`Corruption Level: ${state.corruption}%`);
         addOutput(`Puzzle Progress: ${puzzleManager.getProgress().percentage}%`);
         break;
 
+      case 'clear':
+      case 'cls':
+        // Clear command output
+        setOutput([]);
+        setScrollOffset(0);
+        outputRef.current = [];
+        addOutput('--- Output cleared ---');
+        break;
+        
       case 'save':
         addOutput('Game saved.');
         break;
@@ -430,9 +444,10 @@ const Game: React.FC = () => {
     }, 0);
   }, [currentRoom, state, activePuzzle, output.length]);
 
-  // Enable scrolling with Ctrl+U (up) and Ctrl+D (down)
-  useKeyboard((event: { name?: string; ctrl?: boolean }) => {
-    if (!event.ctrl) return;
+  // Enable scrolling with Ctrl+U/D
+  useKeyboard((event: { name?: string; ctrl?: boolean; shift?: boolean; sequence?: string }) => {
+    // Scrolling with Ctrl+U/D
+    if (!event.ctrl || event.shift) return;
     
     if (event.name === 'u') {
       // Scroll up

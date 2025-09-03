@@ -30,6 +30,13 @@ export const CommandInputFixed: React.FC<CommandInputFixedProps> = ({
     const str = event?.sequence || event?.str || '';
     const name = event?.name || '';
     const ctrl = event?.ctrl || false;
+    const meta = event?.meta || false;
+    
+    // Handle Cmd+K/Cmd+L for clearing - send as clear command
+    if (meta && (name === 'k' || name === 'l')) {
+      onCommand('clear');
+      return;
+    }
     
     if (name === 'return' || name === 'enter') {
       if (inputLine.trim()) {
@@ -61,7 +68,7 @@ export const CommandInputFixed: React.FC<CommandInputFixedProps> = ({
       }
     } else if ((ctrl && name === 'c') || name === 'escape') {
       process.exit(0);
-    } else if (str && str.length === 1 && !ctrl) {
+    } else if (str && str.length === 1 && !ctrl && !meta) {
       // Regular character input
       setInputLine(prev => prev + str);
     }
