@@ -1,5 +1,4 @@
 import React from 'react';
-import { Box, Text } from '@opentui/react';
 import type { CommandItem } from '../../game/state/types';
 
 interface InventoryDisplayProps {
@@ -32,7 +31,7 @@ export const InventoryDisplay: React.FC<InventoryDisplayProps> = ({
   };
 
   return (
-    <Box
+    <box
       border="single"
       padding={1}
       style={{
@@ -40,41 +39,41 @@ export const InventoryDisplay: React.FC<InventoryDisplayProps> = ({
         minHeight: 8
       }}
     >
-      <Box marginBottom={1}>
-        <Text bold fg="cyan">
+      <box marginBottom={1}>
+        <text bold fg="cyan">
           {'>'} COMMAND INVENTORY
-        </Text>
-      </Box>
+        </text>
+      </box>
 
-      <Box marginBottom={1}>
-        <Text fg={getMemoryColor()}>
+      <box marginBottom={1}>
+        <text fg={getMemoryColor()}>
           Memory: {getMemoryBar()} {memoryUsed}/{maxInventory}
-        </Text>
-      </Box>
+        </text>
+      </box>
 
-      <Box>
+      <box>
         {inventory.length === 0 ? (
-          <Text fg="gray" italic>
+          <text fg="gray" italic>
             [No commands in memory]
-          </Text>
+          </text>
         ) : (
           inventory.map((item, index) => (
-            <Box key={index}>
-              <Text fg="yellow">
+            <box key={index}>
+              <text fg="yellow">
                 {index + 1}. {item}
-              </Text>
-            </Box>
+              </text>
+            </box>
           ))
         )}
-      </Box>
+      </box>
 
       {memoryUsed === maxInventory && (
-        <Box marginTop={1}>
-          <Text fg="red" bold>
+        <box marginTop={1}>
+          <text fg="red" bold>
             [MEMORY FULL - Drop items to continue]
-          </Text>
-        </Box>
+          </text>
+        </box>
       )}
-    </Box>
+    </box>
   );
 };

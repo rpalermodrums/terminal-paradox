@@ -1,5 +1,4 @@
 import React, { useState, useCallback } from 'react';
-import { Box, Text, Input } from '@opentui/react';
 
 interface CommandInputProps {
   onCommand: (command: string) => void;
@@ -59,7 +58,7 @@ export const CommandInput: React.FC<CommandInputProps> = ({
   };
 
   return (
-    <Box
+    <box
       border="single"
       padding={1}
       style={{
@@ -67,11 +66,11 @@ export const CommandInput: React.FC<CommandInputProps> = ({
         minHeight: 3
       }}
     >
-      <Box display="flex" flexDirection="row">
-        <Text fg={isCorrupted ? 'red' : 'green'} bold>
+      <box display="flex" flexDirection="row">
+        <text fg={isCorrupted ? 'red' : 'green'} bold>
           {getPrompt()}
-        </Text>
-        <Input
+        </text>
+        <input
           value={input}
           onChange={setInput}
           onSubmit={handleSubmit}
@@ -82,7 +81,7 @@ export const CommandInput: React.FC<CommandInputProps> = ({
             color: isCorrupted && Math.random() < 0.1 ? 'red' : 'white'
           }}
         />
-      </Box>
-    </Box>
+      </box>
+    </box>
   );
 };

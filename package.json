@@ -8,12 +8,13 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "vitest",
+    "test": "bun test",
+    "test:vitest": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
-    "game": "tsx src/cli.tsx",
-    "game:build": "tsc src/cli.tsx --outDir dist",
-    "start": "npm run game"
+    "game": "bun run src/cli.tsx",
+    "game:build": "bun build src/cli.tsx --outdir=dist",
+    "start": "bun run game"
   },
   "dependencies": {
     "react": "^19.1.1",

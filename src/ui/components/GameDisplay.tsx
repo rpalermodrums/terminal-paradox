@@ -1,5 +1,4 @@
 import React from 'react';
-import { Box, Text } from '@opentui/react';
 import type { Room, GameState } from '../../game/state/types';
 
 interface GameDisplayProps {
@@ -29,7 +28,7 @@ export const GameDisplay: React.FC<GameDisplayProps> = ({ room, gameState }) => 
   };
 
   return (
-    <Box
+    <box
       border="single"
       padding={1}
       style={{
@@ -38,58 +37,58 @@ export const GameDisplay: React.FC<GameDisplayProps> = ({ room, gameState }) => 
       }}
     >
       {/* Room Title */}
-      <Box marginBottom={1}>
-        <Text 
+      <box marginBottom={1}>
+        <text 
           bold 
           fg={corruptionLevel > 75 ? 'red' : 'cyan'}
         >
           {'>'} {corruptText(room.name.toUpperCase())}
-        </Text>
-      </Box>
+        </text>
+      </box>
 
       {/* ASCII Art if available */}
       {room.ascii && (
-        <Box marginBottom={1}>
-          <Text fg="green" dim>
+        <box marginBottom={1}>
+          <text fg="green" dim>
             {corruptText(room.ascii)}
-          </Text>
-        </Box>
+          </text>
+        </box>
       )}
 
       {/* Room Description */}
-      <Box marginBottom={1}>
-        <Text fg="white">
+      <box marginBottom={1}>
+        <text fg="white">
           {corruptText(room.description)}
-        </Text>
-      </Box>
+        </text>
+      </box>
 
       {/* Available Exits */}
-      <Box marginBottom={1}>
-        <Text fg="yellow">
+      <box marginBottom={1}>
+        <text fg="yellow">
           Exits: {Object.keys(room.exits).join(', ') || 'none'}
-        </Text>
-      </Box>
+        </text>
+      </box>
 
       {/* Items in Room */}
       {room.items.length > 0 && (
-        <Box marginBottom={1}>
-          <Text fg="magenta">
+        <box marginBottom={1}>
+          <text fg="magenta">
             Items here: {room.items.join(', ')}
-          </Text>
-        </Box>
+          </text>
+        </box>
       )}
 
       {/* Corruption Warning */}
       {corruptionLevel > 0 && (
-        <Box marginTop={1}>
-          <Text 
+        <box marginTop={1}>
+          <text 
             fg={corruptionLevel > 75 ? 'red' : corruptionLevel > 50 ? 'yellow' : 'white'}
             bold={corruptionLevel > 50}
           >
             [SYSTEM CORRUPTION: {corruptionLevel}%]
-          </Text>
-        </Box>
+          </text>
+        </box>
       )}
-    </Box>
+    </box>
   );
 };

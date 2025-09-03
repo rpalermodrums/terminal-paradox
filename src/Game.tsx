@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { render, Box, Text } from '@opentui/react';
+import { render } from '@opentui/react';
 import { GameDisplay } from './ui/components/GameDisplay';
 import { InventoryDisplay } from './ui/components/InventoryDisplay';
-import { CommandInput } from './ui/components/CommandInput';
+import { CommandInputFixed } from './ui/components/CommandInputFixed';
 import { gameState } from './game/state/gameState';
 import { roomFactory } from './game/rooms/roomFactory';
 import { commandParser } from './game/commands/commandParser';
@@ -200,32 +200,32 @@ const Game: React.FC = () => {
   }, [currentRoom, state]);
 
   return (
-    <Box display="flex" flexDirection="column" height="100%">
+    <box display="flex" flexDirection="column" height="100%">
       {/* Game Title */}
-      <Box marginBottom={1}>
-        <Text bold fg="green">
+      <box marginBottom={1}>
+        <text bold fg="green">
           TERMINAL PARADOX - {gameState.getFormattedTime()}
-        </Text>
-      </Box>
+        </text>
+      </box>
 
       {/* Main Game Area */}
-      <Box display="flex" flexDirection="row" flex={1}>
+      <box display="flex" flexDirection="row" flex={1}>
         {/* Left Panel - Room Display */}
-        <Box flex={2} marginRight={1}>
+        <box flex={2} marginRight={1}>
           <GameDisplay room={currentRoom} gameState={state} />
-        </Box>
+        </box>
 
         {/* Right Panel - Inventory */}
-        <Box flex={1}>
+        <box flex={1}>
           <InventoryDisplay 
             inventory={state.inventory} 
             maxInventory={state.maxInventory} 
           />
-        </Box>
-      </Box>
+        </box>
+      </box>
 
       {/* Output History */}
-      <Box 
+      <box 
         border="single" 
         padding={1} 
         marginTop={1}
@@ -236,20 +236,20 @@ const Game: React.FC = () => {
         }}
       >
         {output.map((line, i) => (
-          <Text key={i} fg={line.startsWith('ERROR') ? 'red' : 'white'}>
+          <text key={i} fg={line.startsWith('ERROR') ? 'red' : 'white'}>
             {line}
-          </Text>
+          </text>
         ))}
-      </Box>
+      </box>
 
       {/* Command Input */}
-      <Box marginTop={1}>
-        <CommandInput 
+      <box marginTop={1}>
+        <CommandInputFixed 
           onCommand={handleCommand} 
           isCorrupted={state.corruption > 25} 
         />
-      </Box>
-    </Box>
+      </box>
+    </box>
   );
 };
 
