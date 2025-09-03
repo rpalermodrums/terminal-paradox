@@ -9,7 +9,9 @@ import { commandParser, type ParsedCommand } from './game/commands/commandParser
 import { puzzleManager } from './game/puzzles/puzzleManager';
 import { corruptionEngine } from './game/corruption/corruptionEngine';
 import { commandCombinationEngine } from './game/commands/commandCombination';
-import type { Room, GameState } from './game/state/types';
+import { getCommandHelp } from './game/commands/commandHelp';
+import { parseCommandWithFlags, executeCommand } from './game/commands/commandExecutor';
+import type { Room, GameState, CommandItem } from './game/state/types';
 
 const Game: React.FC = () => {
   const [state, setState] = useState<GameState>(gameState.getState());
@@ -20,6 +22,8 @@ const Game: React.FC = () => {
   const [output, setOutput] = useState<string[]>([]);
   const [activePuzzle, setActivePuzzle] = useState<string | null>(null);
   const [scrollOffset, setScrollOffset] = useState(0);  // Start at top of output
+  const [autoScroll, setAutoScroll] = useState(true);  // Track if we should auto-scroll
+  const [isProcessingCommand, setIsProcessingCommand] = useState(false);
   const outputRef = useRef<string[]>([]);  // Initialize empty
   
   // Get terminal dimensions early
@@ -44,6 +48,9 @@ const Game: React.FC = () => {
   
   // Total should ALWAYS equal terminal height
   const TOTAL_HEIGHT = TITLE_HEIGHT + GAME_AREA_HEIGHT + OUTPUT_DISPLAY_HEIGHT + COMMAND_HEIGHT;
+  
+  // Calculate how many lines we can actually display in output
+  const maxOutputLines = Math.max(1, OUTPUT_DISPLAY_HEIGHT - 2); // -2 for border
 
   useEffect(() => {
     const unsubscribe = gameState.subscribe((newState) => {
@@ -84,14 +91,22 @@ const Game: React.FC = () => {
     }
   }, [state.corruption]);
   
-  // Track when output changes to handle auto-scrolling
-  const [lastCommandIndex, setLastCommandIndex] = useState(0);
-  
-  // Removed auto-scroll for now - always show latest
+  // Effect to handle scrolling after command completes
+  useEffect(() => {
+    // When processing completes, scroll to bottom
+    if (!isProcessingCommand && autoScroll && output.length > 0) {
+      // Always scroll to absolute bottom to show latest output
+      // Account for scroll indicators (typically 2 lines when both are shown)
+      const effectiveLines = output.length > maxOutputLines ? maxOutputLines - 2 : maxOutputLines;
+      const maxScroll = Math.max(0, output.length - effectiveLines);
+      setScrollOffset(maxScroll);
+    }
+  }, [isProcessingCommand, output.length, autoScroll, maxOutputLines]);
 
   const handleCommand = useCallback((input: string) => {
-    // Remember where this command starts in the output
-    const commandStartIndex = output.length;
+    // Enable auto-scroll and mark that we're processing a command
+    setAutoScroll(true);
+    setIsProcessingCommand(true);
     
     // Apply command interception at high corruption
     const processedInput = state.corruption > 30 ? 
@@ -240,6 +255,7 @@ const Game: React.FC = () => {
           if (gameState.addItem(item)) {
             currentRoom.items.splice(itemIndex, 1);
             addOutput(`Acquired command: ${item}`);
+            addOutput(`💡 Type '${item} --help' to learn about this command!`);
             
             // Check for combination hints
             const hint = commandCombinationEngine.getHintForItems(state.inventory);
@@ -275,53 +291,38 @@ const Game: React.FC = () => {
           break;
         }
         if (command.item && gameState.hasItem(command.item)) {
-          // Special effects for different items
-          switch (command.item) {
-            case 'ls':
-              addOutput('Listing directory contents...');
-              addOutput('drwxr-xr-x  corrupted.txt');
-              addOutput('drwxr-xr-x  escape.sh [locked]');
-              addOutput('drwxr-xr-x  memories/');
-              if (state.currentRoom === 'file-maze') {
-                addOutput('drwxr-xr-x  .hidden_path/');
-                gameState.setFlag('found_hidden', true);
+          // Parse the full use command to extract flags
+          const fullCommand = command.raw.substring(4).trim(); // Remove 'use '
+          const parsed = parseCommandWithFlags(fullCommand);
+          
+          if (parsed) {
+            const result = executeCommand(
+              command.item,
+              parsed.flags,
+              parsed.args,
+              state,
+              state.currentRoom,
+              activePuzzle
+            );
+            
+            // Add output
+            result.output.forEach(line => addOutput(line));
+            
+            // Apply effects
+            if (result.effects) {
+              if (result.effects.flagsToSet) {
+                Object.entries(result.effects.flagsToSet).forEach(([flag, value]) => {
+                  gameState.setFlag(flag, value);
+                });
               }
-              break;
-            case 'sudo':
-              if (state.currentRoom === 'root-vault') {
-                addOutput('SUDO: Authentication successful!');
-                addOutput('ROOT ACCESS GRANTED!');
-                gameState.setFlag('has_root', true);
-                gameState.decreaseCorruption(50);
-              } else {
-                addOutput('SUDO: This incident will be reported.');
-                gameState.increaseCorruption(10);
+              if (result.effects.corruptionChange) {
+                if (result.effects.corruptionChange > 0) {
+                  gameState.increaseCorruption(result.effects.corruptionChange);
+                } else {
+                  gameState.decreaseCorruption(Math.abs(result.effects.corruptionChange));
+                }
               }
-              break;
-            case 'kill':
-              addOutput('Killing zombie processes...');
-              gameState.decreaseCorruption(15);
-              break;
-            case 'grep':
-              addOutput('Searching for escape patterns...');
-              addOutput('Found: /dev/escape -> /freedom');
-              gameState.setFlag('found_escape', true);
-              break;
-            case 'chmod':
-              addOutput('Changing permissions...');
-              if (activePuzzle) {
-                addOutput('Permissions modified for puzzle environment.');
-              }
-              break;
-            case 'cat':
-              addOutput('Reading file contents...');
-              addOutput('[CORRUPTED DATA]');
-              break;
-            case 'echo':
-              addOutput('echo: Terminal Paradox v0.0.1');
-              break;
-            default:
-              addOutput(`Executed: ${command.item}`);
+            }
           }
         } else {
           addOutput(`ERROR: Command not found: ${command.target}`);
@@ -375,6 +376,10 @@ const Game: React.FC = () => {
         addOutput('  combine X with Y - Combine items');
         addOutput('  clear/cls       - Clear output history');
         addOutput('');
+        addOutput('COLLECTED COMMANDS:');
+        addOutput('  <cmd> --help    - Learn about a command (e.g., ls --help)');
+        addOutput('  use <command>   - Execute collected command');
+        addOutput('');
         addOutput('SHORTCUTS:');
         addOutput('  Ctrl+U/D        - Scroll output up/down');
         addOutput('  Cmd+K or Cmd+L  - Clear output');
@@ -388,6 +393,7 @@ const Game: React.FC = () => {
         // Clear command output
         setOutput([]);
         setScrollOffset(0);
+        setAutoScroll(true);  // Reset auto-scroll
         outputRef.current = [];
         addOutput('--- Output cleared ---');
         break;
@@ -404,12 +410,56 @@ const Game: React.FC = () => {
         break;
 
       default:
+        // Check if it's a command with --help flag
+        const helpMatch = input.match(/^(\w+)\s+--help$/);
+        if (helpMatch) {
+          const cmdName = helpMatch[1].toLowerCase();
+          if (gameState.hasItem(cmdName as CommandItem)) {
+            const helpLines = getCommandHelp(cmdName as CommandItem);
+            helpLines.forEach(line => addOutput(line));
+            return;
+          } else {
+            addOutput(`ERROR: You don't have the '${cmdName}' command yet.`);
+            addOutput('Collect commands by exploring and solving puzzles!');
+            return;
+          }
+        }
+        
         // Check if it's a command item being used directly
-        const possibleItem = input.trim().toLowerCase();
-        if (gameState.hasItem(possibleItem as any)) {
-          // Treat it as "use <item>"
-          handleCommand(`use ${possibleItem}`);
-          return;
+        const possibleItem = input.trim().split(/\s+/)[0].toLowerCase();
+        if (gameState.hasItem(possibleItem as CommandItem)) {
+          // Parse for flags and execute directly
+          const parsed = parseCommandWithFlags(input);
+          if (parsed) {
+            const result = executeCommand(
+              possibleItem as CommandItem,
+              parsed.flags,
+              parsed.args,
+              state,
+              state.currentRoom,
+              activePuzzle
+            );
+            
+            // Add output
+            result.output.forEach(line => addOutput(line));
+            
+            // Apply effects
+            if (result.effects) {
+              if (result.effects.flagsToSet) {
+                Object.entries(result.effects.flagsToSet).forEach(([flag, value]) => {
+                  gameState.setFlag(flag, value);
+                });
+              }
+              if (result.effects.corruptionChange) {
+                if (result.effects.corruptionChange > 0) {
+                  gameState.increaseCorruption(result.effects.corruptionChange);
+                } else {
+                  gameState.decreaseCorruption(Math.abs(result.effects.corruptionChange));
+                }
+              }
+            }
+            return;
+          }
         }
         
         const errorMessages = [
@@ -436,13 +486,12 @@ const Game: React.FC = () => {
       addOutput('=================================');
     }
     
-    // Auto-scroll to show the command and its output
-    // Use setTimeout to ensure output has been updated
+    // Mark command processing as complete after a short delay
+    // This ensures all output has been added before scrolling
     setTimeout(() => {
-      // Scroll to the command line position
-      setScrollOffset(commandStartIndex);
-    }, 0);
-  }, [currentRoom, state, activePuzzle, output.length]);
+      setIsProcessingCommand(false);
+    }, 50);
+  }, [currentRoom, state, activePuzzle, addOutput]);
 
   // Enable scrolling with Ctrl+U/D
   useKeyboard((event: { name?: string; ctrl?: boolean; shift?: boolean; sequence?: string }) => {
@@ -450,28 +499,39 @@ const Game: React.FC = () => {
     if (!event.ctrl || event.shift) return;
     
     if (event.name === 'u') {
-      // Scroll up
+      // Scroll up - disable auto-scroll
+      setAutoScroll(false);
       setScrollOffset(prev => Math.max(0, prev - 5));
     } else if (event.name === 'd') {
       // Scroll down
       const maxScroll = Math.max(0, output.length - maxOutputLines);
-      setScrollOffset(prev => Math.min(maxScroll, prev + 5));
+      setScrollOffset(prev => {
+        const newOffset = Math.min(maxScroll, prev + 5);
+        // Re-enable auto-scroll if we've scrolled to the bottom
+        if (newOffset >= maxScroll) {
+          setAutoScroll(true);
+        }
+        return newOffset;
+      });
     }
   });
-
-  // Calculate how many lines we can actually display in output
-  const maxOutputLines = Math.max(1, OUTPUT_DISPLAY_HEIGHT - 2); // -2 for border
   
   // Handle scrolling - show different portion of output based on scroll offset
-  const visibleOutput = (() => {
-    if (output.length === 0) return [];
-    const start = Math.max(0, Math.min(scrollOffset, output.length - maxOutputLines));
-    const end = Math.min(output.length, start + maxOutputLines);
-    return output.slice(start, end);
-  })();
-  
+  // Account for scroll indicators taking up space
   const canScrollUp = scrollOffset > 0;
   const canScrollDown = scrollOffset < output.length - maxOutputLines;
+  
+  // Calculate actual available lines for content
+  const scrollIndicatorLines = (canScrollUp ? 1 : 0) + (canScrollDown ? 1 : 0);
+  const availableContentLines = Math.max(1, maxOutputLines - scrollIndicatorLines);
+  
+  const visibleOutput = (() => {
+    if (output.length === 0) return [];
+    // Use scrollOffset directly as the start position
+    const start = Math.max(0, scrollOffset);
+    const end = Math.min(output.length, start + availableContentLines);
+    return output.slice(start, end);
+  })();
 
   
   return (
@@ -515,21 +575,17 @@ const Game: React.FC = () => {
         }}
       >
         <box padding={1} height={OUTPUT_DISPLAY_HEIGHT - 2}>
-          {/* Scroll indicators inline with content */}
-          {canScrollUp && (
-            <text fg="yellow" bold>↑ More above (Ctrl+U)</text>
-          )}
-          
           {/* Show output or placeholder */}
-          {visibleOutput.length === 0 ? (
+          {output.length === 0 ? (
             <text fg="gray">Type 'help' to see available commands</text>
           ) : (
-            visibleOutput.map((line, i) => {
-              // Account for space taken by scroll indicators
-              const skipLines = (canScrollUp ? 1 : 0) + (canScrollDown ? 1 : 0);
-              if (i >= maxOutputLines - skipLines) return null;
+            <>
+              {/* Scroll indicators inline with content */}
+              {canScrollUp && (
+                <text fg="yellow" bold>↑ More above (Ctrl+U)</text>
+              )}
               
-              return (
+              {visibleOutput.map((line, i) => (
                 <text key={i} fg={
                   line.startsWith('ERROR') || line.startsWith('FAILED') ? 'red' : 
                   line.startsWith('SUCCESS') ? 'green' :
@@ -538,13 +594,13 @@ const Game: React.FC = () => {
                 }>
                   {line.substring(0, terminalCols - 4)}
                 </text>
-              );
-            })
-          )}
-          
-          {/* Bottom indicator */}
-          {canScrollDown && (
-            <text fg="yellow" bold>↓ More below (Ctrl+D)</text>
+              ))}
+              
+              {/* Bottom indicator */}
+              {canScrollDown && (
+                <text fg="yellow" bold>↓ More below (Ctrl+D)</text>
+              )}
+            </>
           )}
         </box>
       </box>
