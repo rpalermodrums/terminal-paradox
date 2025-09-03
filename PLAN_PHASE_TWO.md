@@ -311,13 +311,25 @@ achievements: [
    - Display combination discoveries
    - Hint system interface
 
+### ✅ Completed in Latest Session:
+1. ✅ Integrated puzzle system into main game
+2. ✅ Added puzzle commands (solve, hint, puzzles)
+3. ✅ Connected corruption engine to UI
+   - Text corruption on output
+   - Command interception
+   - Echo effects
+   - Border color changes
+4. ✅ Implemented combination discovery flow
+5. ✅ Added combination hints when picking up items
+6. ✅ Integrated all Phase 2.1 features into gameplay
+
 ### Next Development Session Should:
-1. Integrate puzzle system into main game
-2. Add puzzle commands (solve, hint, examine)
-3. Connect corruption engine to UI
-4. Implement combination discovery flow
-5. Add narrative content to puzzles
-6. Create more puzzle variants
+1. Create more puzzle variants
+2. Add narrative content to puzzles
+3. Implement meta-gaming file system puzzles
+4. Add more visual corruption effects
+5. Create procedural puzzle generation
+6. Add achievement system
 
 ## Risk Mitigation
 - **Complexity Creep**: Keep puzzles intuitive

@@ -9,6 +9,25 @@ interface GameDisplayProps {
 export const GameDisplay: React.FC<GameDisplayProps> = ({ room, gameState }) => {
   const corruptionLevel = gameState.corruption;
   
+  // Word wrap helper
+  const wrapText = (text: string, maxWidth: number = 60): string[] => {
+    const words = text.split(' ');
+    const lines: string[] = [];
+    let currentLine = '';
+    
+    words.forEach(word => {
+      if ((currentLine + word).length > maxWidth) {
+        if (currentLine) lines.push(currentLine.trim());
+        currentLine = word + ' ';
+      } else {
+        currentLine += word + ' ';
+      }
+    });
+    
+    if (currentLine) lines.push(currentLine.trim());
+    return lines;
+  };
+  
   // Apply corruption effects to text
   const corruptText = (text: string): string => {
     if (corruptionLevel === 0) return text;
@@ -31,9 +50,11 @@ export const GameDisplay: React.FC<GameDisplayProps> = ({ room, gameState }) => 
     <box
       border="single"
       padding={1}
+      height="100%"
       style={{
         borderColor: corruptionLevel > 50 ? 'red' : 'green',
-        minHeight: 20
+        overflow: 'hidden',
+        position: 'relative'
       }}
     >
       {/* Room Title */}
@@ -56,10 +77,12 @@ export const GameDisplay: React.FC<GameDisplayProps> = ({ room, gameState }) => 
       )}
 
       {/* Room Description */}
-      <box marginBottom={1}>
-        <text fg="white">
-          {corruptText(room.description)}
-        </text>
+      <box marginBottom={1} style={{ maxHeight: 3, overflow: 'hidden' }}>
+        {wrapText(room.description, 45).slice(0, 3).map((line, i) => (
+          <text key={i} fg="white">
+            {corruptText(line)}
+          </text>
+        ))}
       </box>
 
       {/* Available Exits */}

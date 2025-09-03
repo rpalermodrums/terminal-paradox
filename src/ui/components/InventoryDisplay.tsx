@@ -34,9 +34,11 @@ export const InventoryDisplay: React.FC<InventoryDisplayProps> = ({
     <box
       border="single"
       padding={1}
+      height="100%"
       style={{
         borderColor: 'cyan',
-        minHeight: 8
+        overflow: 'hidden',
+        position: 'relative'
       }}
     >
       <box marginBottom={1}>
